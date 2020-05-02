@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Basic wrapper function for Encoder type.
 func Encode(s string) string {
 	enc := &Encoder{}
 	r := strings.NewReader(s)

@@ -16,6 +16,7 @@ type state struct {
 	trailingSpace bool
 }
 
+// Encoder provides basic buffered encoding.
 type Encoder struct {
 	buffIn  bytes.Buffer
 	buffOut bytes.Buffer
@@ -25,7 +26,9 @@ type Encoder struct {
 	// Punctuation defines whether punctuation characters will be encoded as well.
 	// It must be set before first call to write.
 	Punctuation bool
-	Extended    bool
+	// Extended defines whether to use extended Morse code.
+	// It must be set before first call to write.
+	Extended bool
 }
 
 func (e *Encoder) Write(b []byte) (int, error) {
