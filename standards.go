@@ -3,7 +3,7 @@ package morse
 var itu = map[rune]string{
 	'A':  ".-",
 	'B':  "-...",
-	'C':  ".-.-",
+	'C':  "-.-.",
 	'D':  "-..",
 	'E':  ".",
 	'F':  "..-.",

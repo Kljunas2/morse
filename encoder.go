@@ -16,7 +16,7 @@ type state struct {
 	trailingSpace bool
 }
 
-// Encoder provides basic buffered encoding.
+// Encoder provides basic buffered encoding. It translates based on ITU code, skipping unconvertable characters.
 type Encoder struct {
 	buffIn  bytes.Buffer
 	buffOut bytes.Buffer
@@ -31,14 +31,18 @@ type Encoder struct {
 	Extended bool
 }
 
-func (e *Encoder) Write(b []byte) (int, error) {
-	n, err := e.buffIn.Write(b)
+// Write appends the ocntents of to the encoder's buffer, translating it.
+// The return value n is the length of p, err is always nil.
+func (e *Encoder) Write(p []byte) (n int, err error) {
+	// Call to bytes.Buffer.Write always returns nil error.
+	n, _ = e.buffIn.Write(p)
 	e.translateBuffer()
-	return n, err
+	return n, nil
 }
 
-func (e *Encoder) Read(buff []byte) (int, error) {
-	return e.buffOut.Read(buff)
+// Read writes translated buffer to p.
+func (e *Encoder) Read(p []byte) (int, error) {
+	return e.buffOut.Read(p)
 }
 
 func (e *Encoder) translateBuffer() {
@@ -47,12 +51,12 @@ func (e *Encoder) translateBuffer() {
 
 	for scanner.Scan() {
 		word := scanner.Text()
-		if err := scanner.Err(); err != nil {
-			fmt.Println(err)
-		}
+
+		// Remove any non-convertable characters.
+		cleanWord := e.sanitizeWord([]byte(word))
 
 		// Skip entirely non-printable word.
-		if !e.containsConvertable(word) {
+		if len(cleanWord) == 0 {
 			continue
 		}
 
@@ -66,23 +70,33 @@ func (e *Encoder) translateBuffer() {
 		}
 		e.notFirstWord = true
 
-		for i, r := range []rune(word) {
-			if e.isConvertable(r) {
-				if i > 0 {
-					// Prepend letter delimeter.
-					e.buffOut.WriteString("/")
-				}
-				if unicode.IsLetter(r) {
-					r = unicode.ToUpper(r)
-				}
-				code, ok := itu[r]
-				if !ok {
-					panic(fmt.Sprintf("%q should be convertable", r))
-				}
-				e.buffOut.WriteString(code)
+		for i, r := range cleanWord {
+			if i > 0 {
+				// Prepend letter delimeter.
+				e.buffOut.WriteString("/")
 			}
+			if unicode.IsLetter(r) {
+				r = unicode.ToUpper(r)
+			}
+			code, ok := itu[r]
+			if !ok {
+				panic(fmt.Sprintf("%q should be convertable", r))
+			}
+			e.buffOut.WriteString(code)
 		}
 	}
+}
+
+func (e *Encoder) sanitizeWord(s []byte) []rune {
+	var cleanWord []rune
+	for i, width := 0, 0; i < len(s); i += width {
+		var r rune
+		r, width = utf8.DecodeRune(s[i:])
+		if e.isConvertable(r) {
+			cleanWord = append(cleanWord, unicode.ToUpper(r))
+		}
+	}
+	return cleanWord
 }
 
 func (e *Encoder) isConvertable(r rune) bool {
@@ -91,15 +105,6 @@ func (e *Encoder) isConvertable(r rune) bool {
 	}
 	r = unicode.ToUpper(r)
 	return strings.ContainsRune(e.convertable, r)
-}
-
-func (e *Encoder) containsConvertable(s string) bool {
-	for _, r := range []rune(s) {
-		if e.isConvertable(r) {
-			return true
-		}
-	}
-	return false
 }
 
 func (e *Encoder) initConvertable() {
@@ -135,18 +140,36 @@ func (e *Encoder) scanWords(data []byte, atEOF bool) (advance int, token []byte,
 		r, width = utf8.DecodeRune(data[i:])
 		if unicode.IsSpace(r) {
 			e.trailingSpace = true
-			//fmt.Println("read with trailing:", i+width, data[start:i])
 			return i + width, data[start:i], nil
 		}
 	}
 	// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
 	if atEOF && len(data) > start {
 		e.trailingSpace = false
-		//fmt.Println("read:", len(data), data[start:], start, e.trailingSpace)
-		return len(data), data[start:], nil
+		// Scanner has to advance to the end of the data slice.
+		returnLen := len(data)
+		// Check for runes split at the end.
+		data, broken := e.checkSplit(data[start:])
+		e.buffIn.Write(broken)
+		return returnLen, data, nil
 	}
-	// Request more data.
+
 	e.trailingSpace = e.leadingSpace
-	//fmt.Println("no read, trailing:", e.trailingSpace)
+	// Request more data.
 	return start, nil, nil
+}
+
+func (e *Encoder) checkSplit(data []byte) (full, broken []byte) {
+	var lastStart int
+	for i := len(data) - 1; i >= 0; i-- {
+		// Return broken rune for next call to encodeBuffer.
+		if utf8.RuneStart(data[i]) {
+			lastStart = i
+			break
+		}
+	}
+	if !utf8.FullRune(data[lastStart:]) {
+		return data[:lastStart], data[lastStart:]
+	}
+	return data, nil
 }
