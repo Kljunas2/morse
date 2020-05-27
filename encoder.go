@@ -1,4 +1,5 @@
-// Package morse provides tools to convert morse code to and from latin alphabet.
+// Package morse provides tools to convert morse code to
+// and from latin alphabet.
 package morse
 
 import (
@@ -16,14 +17,16 @@ type state struct {
 	trailingSpace bool
 }
 
-// Encoder provides basic buffered encoding. It translates based on ITU code, skipping unconvertable characters.
+// Encoder provides basic buffered encoding.
+// It translates based on ITU code, skipping unconvertable characters.
 type Encoder struct {
 	buffIn  bytes.Buffer
 	buffOut bytes.Buffer
 
 	state
 	convertable string
-	// Punctuation defines whether punctuation characters will be encoded as well.
+	// Punctuation defines whether punctuation characters
+	// will be encoded as well.
 	// It must be set before first call to write.
 	Punctuation bool
 	// Extended defines whether to use extended Morse code.
@@ -60,7 +63,8 @@ func (e *Encoder) translateBuffer() {
 			continue
 		}
 
-		// Current word is either continuation from previus write or entirely new word.
+		// Current word is either continuation from previus write,
+		// or entirely new word.
 		if e.notFirstWord {
 			if e.leadingSpace {
 				e.buffOut.WriteString("//")
@@ -117,7 +121,8 @@ func (e *Encoder) initConvertable() {
 	}
 }
 
-func (e *Encoder) scanWords(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func (e *Encoder) scanWords(data []byte, atEOF bool) (
+	advance int, token []byte, err error) {
 	// Skip leading spaces.
 	start := 0
 	for width := 0; start < len(data); start += width {
@@ -143,7 +148,8 @@ func (e *Encoder) scanWords(data []byte, atEOF bool) (advance int, token []byte,
 			return i + width, data[start:i], nil
 		}
 	}
-	// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
+	// If we're at EOF, we have a final, non-empty, non-terminated word.
+	// Return it.
 	if atEOF && len(data) > start {
 		e.trailingSpace = false
 		// Scanner has to advance to the end of the data slice.
