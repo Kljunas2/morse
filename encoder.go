@@ -34,7 +34,7 @@ type Encoder struct {
 	Extended bool
 }
 
-// Write appends the ocntents of to the encoder's buffer, translating it.
+// Write appends the contents of to the encoder's buffer, translating it.
 // The return value n is the length of p, err is always nil.
 func (e *Encoder) Write(p []byte) (n int, err error) {
 	// Call to bytes.Buffer.Write always returns nil error.
