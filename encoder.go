@@ -34,7 +34,7 @@ type Encoder struct {
 	Extended bool
 }
 
-// Write appends the contents of to the encoder's buffer, translating it.
+// Write translates data in p and writes it to internal buffer.
 // The return value n is the length of p, err is always nil.
 func (e *Encoder) Write(p []byte) (n int, err error) {
 	// Call to bytes.Buffer.Write always returns nil error.
@@ -132,7 +132,7 @@ func (e *Encoder) scanWords(data []byte, atEOF bool) (
 			break
 		}
 	}
-	// Check whether token is preceeded by space.
+	// Check whether token is preceded by space.
 	if start > 0 || e.trailingSpace {
 		e.leadingSpace = true
 	} else {
